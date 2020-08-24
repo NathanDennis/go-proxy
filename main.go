@@ -1,23 +1,36 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"time"
 )
 
 func main() {
 
 	handler := &httputil.ReverseProxy{}
 	handler.Director = func(req *http.Request) {
-		url := url.Parse(req.Header.Get("X-Proxy-Target"))
+		dest, err := url.Parse(req.Header.Get("X-Proxy-Target"))
+		if err != nil {
+			fmt.Printf("Error parsing proxy target: %v\n", err)
+		}
+
 		req.Header.Del("X-Proxy-Target")
-		req.URL.Host = url.Host
-		req.URL.Scheme = url.Scheme
+		req.URL.Host = dest.Host
+		req.URL.Scheme = dest.Scheme
 		req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
-		req.Host = url.Host
+		req.Host = dest.Host
 	}
 
-	//url := req.Header.Get("X-Proxy-Target")
+	s := &http.Server{
+		Addr:         ":1412",
+		Handler:      handler,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
 
+	fmt.Printf("Proxy server listening on %s\n", s.Addr)
+	s.ListenAndServe()
 }
