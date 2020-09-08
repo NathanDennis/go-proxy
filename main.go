@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -15,6 +16,17 @@ func main() {
 		dest, err := url.Parse(req.Header.Get("X-Proxy-Target"))
 		if err != nil {
 			fmt.Printf("Error parsing proxy target: %v\n", err)
+		}
+
+		req.URL.Path, req.URL.RawPath = joinURLPath(dest, req.URL)
+
+		if dest.RawQuery == "" || req.URL.RawQuery == "" {
+			req.URL.RawQuery = dest.RawQuery + req.URL.RawQuery
+			fmt.Println("Doing something")
+			fmt.Println(dest)
+		} else {
+			req.URL.RawQuery = dest.RawQuery + "&" + req.URL.RawQuery
+			fmt.Println("Doing something Else")
 		}
 
 		req.Header.Del("X-Proxy-Target")
@@ -33,4 +45,25 @@ func main() {
 
 	fmt.Printf("Proxy server listening on %s\n", s.Addr)
 	s.ListenAndServe()
+}
+
+func joinURLPath(a, b *url.URL) (path, rawpath string) {
+	// if a.RawPath == "" && b.RawPath == "" {
+	// 	return singleJoiningSlash(a.Path, b.Path), ""
+	// }
+	// Same as singleJoiningSlash, but uses EscapedPath to determine
+	// whether a slash should be added
+	apath := a.EscapedPath()
+	bpath := b.EscapedPath()
+
+	aslash := strings.HasSuffix(apath, "/")
+	bslash := strings.HasPrefix(bpath, "/")
+
+	switch {
+	case aslash && bslash:
+		return a.Path + b.Path[1:], apath + bpath[1:]
+	case !aslash && !bslash:
+		return a.Path + "/" + b.Path, apath + "/" + bpath
+	}
+	return a.Path + b.Path, apath + bpath
 }
