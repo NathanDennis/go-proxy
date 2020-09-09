@@ -22,11 +22,8 @@ func main() {
 
 		if dest.RawQuery == "" || req.URL.RawQuery == "" {
 			req.URL.RawQuery = dest.RawQuery + req.URL.RawQuery
-			fmt.Println("Doing something")
-			fmt.Println(dest)
 		} else {
 			req.URL.RawQuery = dest.RawQuery + "&" + req.URL.RawQuery
-			fmt.Println("Doing something Else")
 		}
 
 		req.Header.Del("X-Proxy-Target")
@@ -34,6 +31,8 @@ func main() {
 		req.URL.Scheme = dest.Scheme
 		req.Header.Set("X-Forwarded-Host", req.Header.Get("Host"))
 		req.Host = dest.Host
+
+		fmt.Println(req.URL)
 	}
 
 	s := &http.Server{
@@ -47,10 +46,22 @@ func main() {
 	s.ListenAndServe()
 }
 
+func singleJoiningSlash(a, b string) string {
+	aslash := strings.HasSuffix(a, "/")
+	bslash := strings.HasPrefix(b, "/")
+	switch {
+	case aslash && bslash:
+		return a + b[1:]
+	case !aslash && !bslash:
+		return a + "/" + b
+	}
+	return a + b
+}
+
 func joinURLPath(a, b *url.URL) (path, rawpath string) {
-	// if a.RawPath == "" && b.RawPath == "" {
-	// 	return singleJoiningSlash(a.Path, b.Path), ""
-	// }
+	if a.RawPath == "" && b.RawPath == "" {
+		return singleJoiningSlash(a.Path, b.Path), ""
+	}
 	// Same as singleJoiningSlash, but uses EscapedPath to determine
 	// whether a slash should be added
 	apath := a.EscapedPath()
