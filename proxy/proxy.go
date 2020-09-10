@@ -1,14 +1,22 @@
-package functions
+package proxy
 
 import (
 	"fmt"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"strings"
 )
 
+// NewReverseProxyHandler sets the handler.Director to the proxyDirector func
+func NewReverseProxyHandler() http.Handler {
+	return &httputil.ReverseProxy{
+		Director: proxyDirector,
+	}
+}
+
 // SingleJoiningSlash determines whether a slash should be added
-func SingleJoiningSlash(a, b string) string {
+func singleJoiningSlash(a, b string) string {
 	aslash := strings.HasSuffix(a, "/")
 	bslash := strings.HasPrefix(b, "/")
 	switch {
@@ -22,9 +30,9 @@ func SingleJoiningSlash(a, b string) string {
 
 // JoinURLPath is the same as SingleJoiningSlash, but uses EscapedPath to determine
 // whether a slash should be added
-func JoinURLPath(a, b *url.URL) (path, rawpath string) {
+func joinURLPath(a, b *url.URL) (path, rawpath string) {
 	if a.RawPath == "" && b.RawPath == "" {
-		return SingleJoiningSlash(a.Path, b.Path), ""
+		return singleJoiningSlash(a.Path, b.Path), ""
 	}
 
 	apath := a.EscapedPath()
@@ -42,14 +50,14 @@ func JoinURLPath(a, b *url.URL) (path, rawpath string) {
 	return a.Path + b.Path, apath + bpath
 }
 
-// HandlerDirector contains the logic for handler.Director in main() of main.go
-func HandlerDirector(req *http.Request) {
+// proxyDirector contains the logic for handler.Director in main() of main.go
+func proxyDirector(req *http.Request) {
 	dest, err := url.Parse(req.Header.Get("X-Proxy-Target"))
 	if err != nil {
 		fmt.Printf("Error parsing proxy target: %v\n", err)
 	}
 
-	req.URL.Path, req.URL.RawPath = JoinURLPath(dest, req.URL)
+	req.URL.Path, req.URL.RawPath = joinURLPath(dest, req.URL)
 
 	if dest.RawQuery == "" || req.URL.RawQuery == "" {
 		req.URL.RawQuery = dest.RawQuery + req.URL.RawQuery
