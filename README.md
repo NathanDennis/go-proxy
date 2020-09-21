@@ -1,4 +1,5 @@
-A simple Go proxy server
+TODO
+- Add preflight interceptor to use in the Handler - Issue also raised as a reminder
 
 Set `X-Proxy-Target` header to the host destination
 eg: `X-Proxy-Target: https://jsonplaceholder.typicode.com`
